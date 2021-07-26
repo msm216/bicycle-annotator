@@ -2,13 +2,9 @@ import os
 import time
 import pandas as pd
 import numpy as np
-
-# import random
 import json
 import seaborn as sns
 import matplotlib.pyplot as plt
-
-# import sklearn
 
 from time import time
 from sklearn.metrics import confusion_matrix
@@ -308,7 +304,7 @@ print("=" * 50)
 # *************** Did all annotators produce the same amount of results, or are there differences? ******************* #
 
 # get amount of results for each annotators
-print("Amount of results contributed by each annotator:\n")
+print("Amount of results contributed by each annotator:")
 print(data_full.groupby(["user"], as_index=False).size())
 print("=" * 50)
 
