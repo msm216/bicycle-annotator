@@ -164,6 +164,7 @@ def fix_negativ(df, inst="user", targ="duration"):
         # mean of normal values
         mean = df_sl[~(df_sl[targ] <= 0)][targ].mean()
         df_new.loc[neg_ind, targ] = mean
+    print("Negative values fixed.\n")
 
     return df_new
 
@@ -225,7 +226,7 @@ def statistic_master(df, col="user"):
         )
         # time.sleep(0.01)
 
-    print("Processing done! {:.2f} seconds passed.".format((time() - start)))
+    print("Processing done! {:.2f} seconds passed.\n".format((time() - start)))
 
     # save in DataFrame
     clms = []
@@ -264,6 +265,8 @@ def statistic_master(df, col="user"):
 
 # build the DataFrame
 data_full = build_data()
+print("=" * 50)
+
 # check out the data set
 print("Basic information of the loaded data:")
 print(data_full.info())
@@ -324,6 +327,7 @@ plt.show()
 
 # get statistic for images (takes 6 min!!)
 stats_image = statistic_master(data_fix, col="image")
+print("=" * 50)
 
 # amount of images, to those not a single annotator gave a positive answer
 n_disagree = len(stats_image.loc[stats_image["positive amount"] == 0])
@@ -398,6 +402,7 @@ print(
 print(
     "{0} annotations were corrupt ({1}%)".format(n_corr, round((n_corr / n) * 100, 4))
 )
+print("No trend detected.")
 print("=" * 50)
 
 colormap = plt.cm.RdBu
@@ -452,6 +457,7 @@ plt.show()
 
 # get statistical information for users
 stats_user = statistic_master(data_fix, col="user")
+print("=" * 50)
 
 # find out annotator with high accuracy and low avg.duration
 accu_q1 = stats_user["accuracy"].quantile(q=0.25)
