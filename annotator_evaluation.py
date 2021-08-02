@@ -380,13 +380,19 @@ plt.show()
 
 # *********************************** How often does each occur in the project *************************************** #
 
+# Hint: the data_full has the original index
+
 n = len(data_full)
-# slice 'unsolvable' data
-df_unsol = data_full.sort_values(by="user").loc[data_full["solvable"] == 0]
-n_unsol = len(df_unsol)
-# slice 'corrupted' data
-df_corr = data_full.sort_values(by="user").loc[data_full["corrupt"] == 1]
-n_corr = len(df_corr)
+
+# index of 'unsolvable' data 
+ind_unsol = data_full.loc[data_full['solvable']==0].index.tolist()
+n_unsol = len(ind_unsol)
+# index of 'corrupted' data 
+ind_corr = data_full.loc[data_full['corrupt']==1].index.tolist()
+n_corr = len(ind_corr)
+# index of data with no answer
+ind_nans = data_full.loc[data_full['answer'].isnull()==True].index.tolist()
+n_nans = len(ind_nans)
 
 print("To the entire data set:")
 print("-" * 50)
@@ -400,6 +406,25 @@ print(
 )
 print("No trend detected.")
 print("=" * 50)
+
+ind_corr_unsol = list(set(ind_unsol+ind_corr))
+ind_corr_unsol.sort()
+ind_coun = list(set(ind_unsol).intersection(set(ind_corr)))
+ind_coun.sort()
+
+if ind_corr_unsol == ind_nans:
+    print("Annotations without answer are exactly the sum of unsolvable and corrupt annotations.")
+    print("=" * 50)
+elif len(ind_coun) != 0:
+    print("Annotations, which are unsolvable and corrupt:\n", ind_coun)
+    print("=" * 50)
+else:
+    ind_nans_sol = list(set(ind_nans).difference(set(ind_unsol)))
+    print("Annotations without answer, which are solvable:\n", ind_nans_sol)
+    ind_nans_nc = list(set(ind_nans).difference(set(ind_corr)))
+    print("Annotations without answer, which are not corrupt:\n", ind_nans_nc)
+    print("=" * 50)
+
 
 colormap = plt.cm.RdBu
 plt.figure(figsize=(10, 10))
