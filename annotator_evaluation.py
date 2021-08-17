@@ -209,8 +209,9 @@ def statistic_master(df, col="user"):
             tn, fp, fn, tp = confusion_matrix(y_true, y_anno).ravel()
             prec = round(tp / (tp + fp), 2)
             rec = round(tp / (tp + fn), 2)
+            f1 = round(2*prec*rec/(prec+rec), 2)
             # accu = round((tp+tn)/(tn+fp+fn+tp), 2)
-            inst_info.extend([prec, rec])
+            inst_info.extend([prec, rec, f1])
         if col == "image":
             ref = df["reference"].loc[df[col] == inst].mean()
             inst_info.append(ref)
@@ -236,6 +237,7 @@ def statistic_master(df, col="user"):
             "accuracy",
             "precision",
             "recall",
+            "F1"
         ]
     if col == "image":
         clms = [
@@ -321,37 +323,9 @@ plt.show()
 
 # ************************ Are there questions for which annotators highly disagree? ********************************* #
 
-# get statistic for images (takes 6 min!!)
-stats_image = statistic_master(data_fix, col="image")
-print("=" * 50)
-
-# amount of images, to those not a single annotator gave a positive answer
-n_disagree = len(stats_image.loc[stats_image["positive amount"] == 0])
-n_fn = len(
-    stats_image.loc[
-        (stats_image["positive amount"] == 0) & (stats_image["accuracy"] == 0)
-    ]
-)
-print(
-    "There are {} images/questions for which all annotators totally disagree.".format(
-        n_disagree
-    )
-)
-print(
-    "{} of the images/questions are incorrectly as negative annotated (false negative).".format(
-        n_fn
-    )
-)
-print(
-    [
-        im
-        for im in list(
-            stats_image["image"].loc[
-                (stats_image["positive amount"] == 0) & (stats_image["accuracy"] == 0)
-            ]
-        )
-    ]
-)
+# get the mean of answers for each images
+df_dis = data_fix.groupby(['image']).mean()
+print("Questions for which annotators highly disagree are:\n", df_dis.loc[df_dis['answer']==0.5])
 print("=" * 50)
 
 
@@ -404,7 +378,6 @@ print(
 print(
     "{0} annotations were corrupt ({1}%)".format(n_corr, round((n_corr / n) * 100, 4))
 )
-print("No trend detected.")
 print("=" * 50)
 
 ind_corr_unsol = list(set(ind_unsol+ind_corr))
@@ -426,24 +399,6 @@ else:
     print("=" * 50)
 
 
-colormap = plt.cm.RdBu
-plt.figure(figsize=(10, 10))
-plt.title("Pearson Correlation", y=1.05, size=15)
-sns.heatmap(
-    data_full[["answer", "solvable", "corrupt", "duration", "correct"]]
-    .astype(float)
-    .corr(),
-    linewidths=1,
-    vmax=1.0,
-    vmin=-1.0,
-    square=True,
-    cmap=colormap,
-    linecolor="white",
-    annot=True,
-)
-plt.show()
-
-
 # ************************************ Is the reference set balanced? ************************************************ #
 
 # about the balance of reference
@@ -463,40 +418,57 @@ print(
 print("The reference is {0}.".format(jug))
 print("=" * 50)
 
+df_dis = data_fix.groupby(['image']).mean()
+
 # visualize the amounts of results
-fig3, ax = plt.subplots(figsize=(15, 5))
-ax.set_title("Amount of results produced by annotators", y=1.05, size=15)
-sns.countplot(x="user", hue="reference", data=data_full.sort_values(by="user"))
-ax.set_xlabel("Annotators", fontsize=10)
-ax.set_ylabel("Amount of results", fontsize=10)
+fig, ax = plt.subplots(figsize=(5,5))
+ax.set_title("Amount of positive and negative References", y=1.05, size=15)
+sns.countplot(x='reference', data=df_dis)
+ax.set_xlabel('Annotators', fontsize=10)
+ax.set_ylabel('Amount of results', fontsize=10)
 ax.xaxis.set_tick_params(rotation=90)
-ax.grid(axis="y")
+ax.grid(axis='y')
 plt.show()
 
 
 # ********************************* Can you identify good and bad annotators? **************************************** #
 
 # get statistical information for users
-stats_user = statistic_master(data_fix, col="user")
+stats_user = statistic_master(data_fix, col='user')
 print("=" * 50)
 
-# find out annotator with high accuracy and low avg.duration
-accu_q1 = stats_user["accuracy"].quantile(q=0.25)
-accu_q3 = stats_user["accuracy"].quantile(q=0.75)
-dura_q1 = stats_user["avg.duration"].quantile(q=0.25)
-dura_q3 = stats_user["avg.duration"].quantile(q=0.75)
-top_users = stats_user.loc[
-    (stats_user["accuracy"] >= accu_q3) & (stats_user["avg.duration"] <= dura_q1)
-]
-bad_users = stats_user.loc[
-    (stats_user["accuracy"] <= accu_q1) & (stats_user["avg.duration"] >= dura_q3)
-]
+# visualize the accuracy and avg. annotation time by each annotator
+fig, ax = plt.subplots(2, 1, sharex=True, figsize=(15,10))
+#ax[0].set_title("Accuracy", y=1.05, size=15)
+sns.barplot(x='user', y='F1', data=stats_user, palette='Blues_d', ax=ax[0])
+ax[0].set_ylabel('F1-score of annotation', fontsize=10)
+ax[0].set_xlabel('Annotators', fontsize=10)
+ax[0].xaxis.set_tick_params(rotation=90)
+ax[0].set_ylim([0, 1])
+ax[0].grid(axis='y')
+#ax[1].set_title("Avg.duration", y=1.05, size=15)
+sns.barplot(x='user', y='avg.duration', data=stats_user, palette='Oranges_d', ax=ax[1])
+ax[1].set_ylabel('Avg.duration', fontsize=10)
+ax[1].set_xlabel('Annotators', fontsize=10)
+ax[1].xaxis.set_tick_params(rotation=90)
+ax[1].set_ylim([1, 1750])
+ax[1].grid(axis='y')
+#
+plt.show()
 
+# find out annotator with high accuracy and low avg.duration
+f1_q1 = stats_user['F1'].quantile(q=0.25)
+f1_q3 = stats_user['F1'].quantile(q=0.75)
+dura_q1 = stats_user['avg.duration'].quantile(q=0.25)
+dura_q3 = stats_user['avg.duration'].quantile(q=0.75)
+top_users = stats_user.loc[(stats_user['F1']>=f1_q3) & (stats_user['avg.duration']<=dura_q1)]
+bad_users = stats_user.loc[(stats_user['F1']<=f1_q1) & (stats_user['avg.duration']>=dura_q3)]
 print(
     "Annotators, who had high accuracy and took low avg.annotation time are good.\n",
     list(top_users["user"]),
 )
 print(top_users)
+print("\n")
 print(
     "Annotators, who had low accuracy and took long avg.annotation time are bad.\n",
     list(bad_users["user"]),
@@ -504,23 +476,5 @@ print(
 print(bad_users)
 print("=" * 50)
 
-# visualize the accuracy and avg. annotation time by each annotator
-fig, ax = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
 
-# ax[0].set_title("Accuracy", y=1.05, size=15)
-sns.barplot(x="user", y="accuracy", data=stats_user, palette="Blues_d", ax=ax[0])
-ax[0].set_ylabel("Accuracy of annotation", fontsize=10)
-ax[0].set_xlabel("Annotators", fontsize=10)
-ax[0].xaxis.set_tick_params(rotation=90)
-ax[0].set_ylim([0, 1])
-ax[0].grid(axis="y")
 
-# ax[1].set_title("Avg.duration", y=1.05, size=15)
-sns.barplot(x="user", y="avg.duration", data=stats_user, palette="Oranges_d", ax=ax[1])
-ax[1].set_ylabel("Avg.duration", fontsize=10)
-ax[1].set_xlabel("Annotators", fontsize=10)
-ax[1].xaxis.set_tick_params(rotation=90)
-ax[1].set_ylim([1, 1750])
-ax[1].grid(axis="y")
-
-plt.show()
